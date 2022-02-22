@@ -1,0 +1,62 @@
+class MeasuredOrangeFish(QCAlgorithm):
+    def Initialize(self):
+        self.SetStartDate(2020, 1, 1)  # Set Start Date
+        self.SetEndDate(2021, 1, 1)
+        self.SetCash(100000)  # Set Strategy Cash
+        
+        spy = self.AddEquity("SPY", Resolution.Daily)
+        #self.AddForex, self.AddFuture....
+        
+        spy.SetDataNormalizationMode(DataNormalizationMode.Raw)
+        self.spy = spy.Symbol
+        
+        self.SetBenchmark("SPY")
+        self.SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin)
+        
+        self.entryPrice = 0
+        self.period = timedelta(31)
+        self.nextEntryTime = self.Time
+
+    def OnData(self, data):
+        #if you just added the data with thus very little trading activity your algorithm might not have data for
+        #giving symbol yets
+        if not self.spy in data:
+            return
+        #price = data.Bars[self.spy].close
+        price = data[self.spy].Close
+        #price = self.Securities[self.spy].close
+        
+        #firstly we want to check if our bot is allready invested we can do this self.portfolio.invested it
+        #will return boolean.but since we are only trading spy this want to be necessary here
+        if not self.Portfolio.Invested:
+            #if we want to invested. we want to check if its time to invested a you how fully
+            #remenber this bot is suppose to BUY and HOLD spy.until spy drops arise more than
+            #certain amount.there after certain cash for one month were after we will BUY and HOLD again.to
+            #count for this month watingtime we can use self.time to access a current time and then check it
+            # is greater than equal to nextentry time if this  is fulfill we want to buy as much SPY as we can
+            if self.nextEntryTime <=self.Time:
+                #and easy turn to manualy calculating the ordersize  the use self.set holding which allow you 
+                # to specify statement percentage of your portfolio to allocate to given security
+                self.SetHoldings(self.spy, 1)
+                
+                 #we can Buy spy using self.marketorder which unsurprising sense a market order for the specify
+                #symbol and quantity [note that:negative order size will be interpreted as sell order]
+                #To calculate the order size we divide the current cash now portfolio but the current price spy
+                
+                # self.MarketOrder(self.spy, int(self.Portfolio.Cash/Price))
+                #after this we want to log we just port spy of the current price login inputs actions can be
+                #very helpful reviewing and dubbing your algorithm
+                self.Log("BUY SPY @"+str(price))
+                #instead of using self.log you can also use self.dubbge which will print things to the console
+                #see in the next video
+                
+                #we want to save the current price of SPY to the entry price variable.this will be need for exit
+                #condition
+                self.entryPrice = price
+                #now implement the exit process and then will get to go.this we will use in elif condition  which is
+        #reach and portfolio currently invested  here we check the condition when the entryprice either is 10%
+        #below or above the current price
+        elif self.entryPrice * 1.1 < price or self.entryPrice * 0.9 > price:
+            self.Liquidate()
+            self.Log("SELL SPY @" + str(price))
+            self.nextEntryTime = self.Time + self.period
